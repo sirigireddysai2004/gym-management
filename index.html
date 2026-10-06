@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Gym Membership Manager</title>
+<style>
+:root{--bg:#f6f7f9;--cd:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e4e7ec;--ac:#e8590c;--ok:#2b8a3e;--wa:#e67700;--er:#c92a2a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161a;--cd:#1e2127;--tx:#eceef1;--mu:#98a2b3;--bd:#323741;--ok:#51cf66;--wa:#ffa94d;--er:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#14161a;--cd:#1e2127;--tx:#eceef1;--mu:#98a2b3;--bd:#323741;--ok:#51cf66;--wa:#ffa94d;--er:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.w{max-width:960px;margin:0 auto;padding:16px}h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 10px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.cd{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+.s{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:12px}.s b{display:block;font-size:22px}.s span{color:var(--mu);font-size:13px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:3px}
+input,select{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;cursor:pointer}button.l{background:transparent;color:var(--tx);border:1px solid var(--bd)}button.sm{padding:5px 10px;font-size:13px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}.tabs button{background:var(--cd);color:var(--tx);border:1px solid var(--bd)}.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.t{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd);white-space:nowrap}th{color:var(--mu);font-weight:600;font-size:12px}
+.b{padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor}.ok{color:var(--ok)}.wa{color:var(--wa)}.er{color:var(--er)}.mu{color:var(--mu)}
+.lg{max-width:380px;margin:8vh auto}.msg{color:var(--er);min-height:20px;font-size:13px}.big{font-size:26px;font-weight:700}
+</style></head><body><div class="w" id="app"></div>
+<script>
+const K='gym_v1',$=s=>document.querySelector(s),V=id=>$('#'+id).value;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date()),D=s=>new Date(s+'T00:00');
+const addM=(s,n)=>{const d=D(s);d.setMonth(d.getMonth()+n);return iso(d)},addD=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return iso(d)};
+const left=s=>Math.round((D(s)-D(today()))/864e5),inr=n=>'₹'+Number(n).toLocaleString('en-IN');
+let S,sess=null,tab='dash',pre='',err='';
+function seed(){const P=[{id:'p1',name:'Monthly',months:1,price:1000},{id:'p2',name:'Quarterly',months:3,price:2700},{id:'p3',name:'Yearly',months:12,price:9500}];
+const M=[],Y=[];let n=0;[['Ravi Kumar','9876500001','p1',-27,500],['Anjali Rao','9876500002','p2',-85,0],['Kiran Babu','9876500003','p1',-40,1000],['Sneha Reddy','9876500004','p3',-100,0]].forEach(([name,phone,pid,off,due])=>{
+const p=P.find(x=>x.id==pid),st=addD(today(),off),id='GM'+String(++n).padStart(3,'0');M.push({id,name,phone,email:'',age:28,gender:'-',pw:'1234',planId:pid,start:st,expiry:addM(st,p.months),due});
+if(p.price-due>0)Y.push({id:'t'+n,mid:id,amt:p.price-due,method:'UPI',date:st})});
+return{plans:P,members:M,payments:Y,nid:n,np:3,ny:n}}
+try{S=JSON.parse(localStorage.getItem(K))}catch(e){}if(!S)S=seed();
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+const plan=id=>S.plans.find(p=>p.id==id)||{name:'-',months:1,price:0},mem=id=>S.members.find(m=>m.id==id);
+function st(m){const l=left(m.expiry);return l<0?['Expired','er']:l<=7?['Expiring','wa']:['Active','ok']}
+const badge=m=>{const[a,c]=st(m);return`<span class="b ${c}">${a}</span>`};
+const opts=(a,f,sel)=>a.map(x=>`<option value="${esc(x.id)}"${x.id==sel?' selected':''}>${esc(f(x))}</option>`).join('');
+function login(){const o=V('lr')=='owner',u=V('lu').trim(),p=V('lp');
+if(o){if(u=='admin'&&p=='admin123'){sess={role:'owner'};tab='dash';err=''}else err='Invalid owner credentials'}
+else{const m=mem(u.toUpperCase());if(m&&m.pw==p){sess={role:'member',id:m.id};err=''}else err='Invalid member ID or password'}render()}
+function render(){const a=$('#app');
+if(!sess){a.innerHTML=`<div class="cd lg"><h1>🏋️ Gym Manager</h1><p class="mu">Sign in to continue</p>
+<label>Login as</label><select id="lr"><option value="owner">Owner</option><option value="member">Member</option></select><br><br>
+<label>Username / Member ID</label><input id="lu" autocomplete="off"><br><br><label>Password</label><input id="lp" type="password"><div class="msg">${err}</div>
+<button onclick="login()" style="width:100%">Login</button><p class="mu" style="font-size:12px">Demo — Owner: admin / admin123 · Member: GM001 / 1234</p></div>`;return}
+const out=`<button class="l sm" onclick="sess=null;render()">Logout</button>`;
+if(sess.role=='member'){const m=mem(sess.id),p=plan(m.planId),l=left(m.expiry),h=S.payments.filter(x=>x.mid==m.id).sort((a,b)=>b.date.localeCompare(a.date));
+a.innerHTML=`<div class="top"><h1>Hi, ${esc(m.name)}</h1>${out}</div>
+${l<=7?`<div class="cd ${l<0?'er':'wa'}">${l<0?'Your plan expired '+(-l)+' day(s) ago.':'Your plan expires in '+l+' day(s).'} Please renew at the front desk.</div>`:''}
+<div class="g" style="margin-bottom:14px"><div class="s"><span>Plan</span><b>${esc(p.name)}</b><span>${inr(p.price)}</span></div><div class="s"><span>Expiry date</span><b>${m.expiry}</b>${badge(m)}</div>
+<div class="s"><span>Days left</span><b>${Math.max(l,0)}</b></div><div class="s"><span>Pending amount</span><b class="${m.due?'er':'ok'}">${inr(m.due)}</b></div></div>
+<div class="cd"><h2>Payment history</h2><div class="t"><table><tr><th>Date</th><th>Amount</th><th>Method</th></tr>${h.map(x=>`<tr><td>${x.date}</td><td>${inr(x.amt)}</td><td>${esc(x.method)}</td></tr>`).join('')||'<tr><td colspan=3 class="mu">No payments yet</td></tr>'}</table></div></div>
+<div class="cd mu">Member ID: ${m.id} · Joined plan on ${m.start} · ${esc(m.phone)}</div>`;return}
+const T=[['dash','Dashboard'],['members','Members'],['plans','Plans'],['pay','Payments']];
+a.innerHTML=`<div class="top"><h1>🏋️ Gym Manager</h1>${out}</div><div class="tabs">${T.map(([k,n])=>`<button class="${tab==k?'on':''}" onclick="tab='${k}';pre='';render()">${n}</button>`).join('')}</div><div id="v"></div>`;
+({dash,members,plans,pay})[tab]()}
+function dash(){const M=S.members,ex=M.filter(m=>{const l=left(m.expiry);return l>=0&&l<=7}).sort((a,b)=>a.expiry.localeCompare(b.expiry)),mo=today().slice(0,7);
+const rev=S.payments.filter(p=>p.date.startsWith(mo)).reduce((s,p)=>s+p.amt,0),due=M.reduce((s,m)=>s+m.due,0);
+const c=[['Members',M.length],['Active',M.filter(m=>left(m.expiry)>=0).length],['Expiring in 7 days',ex.length],['Expired',M.filter(m=>left(m.expiry)<0).length],['Pending dues',inr(due)],['Collected this month',inr(rev)]];
+$('#v').innerHTML=`<div class="g" style="margin-bottom:14px">${c.map(([a,b])=>`<div class="s"><b>${b}</b><span>${a}</span></div>`).join('')}</div>
+<div class="cd"><h2>Plans expiring in the next 7 days</h2><div class="t"><table><tr><th>Member</th><th>Phone</th><th>Plan</th><th>Expiry</th><th>Days left</th><th>Due</th><th></th></tr>
+${ex.map(m=>`<tr><td>${esc(m.name)} <span class="mu">${m.id}</span></td><td>${esc(m.phone)}</td><td>${esc(plan(m.planId).name)}</td><td>${m.expiry}</td><td class="wa">${left(m.expiry)}</td><td>${inr(m.due)}</td><td><button class="sm" onclick="tab='pay';pre='${m.id}';render()">Renew</button></td></tr>`).join('')||'<tr><td colspan=7 class="mu">No memberships expiring this week 🎉</td></tr>'}</table></div></div>`}
+function rows(){const q=($('#q')?.value||'').toLowerCase();
+$('#mr').innerHTML=S.members.filter(m=>(m.name+m.phone+m.id).toLowerCase().includes(q)).map(m=>`<tr><td>${m.id}</td><td>${esc(m.name)}</td><td>${esc(m.phone)}</td><td>${esc(plan(m.planId).name)}</td><td>${m.expiry}</td><td>${badge(m)}</td><td class="${m.due?'er':''}">${inr(m.due)}</td></tr>`).join('')||'<tr><td colspan=7 class="mu">No members found</td></tr>'}
+function members(){$('#v').innerHTML=`<div class="cd"><h2>Register member</h2><div class="f">
+<div><label>Full name *</label><input id="n"></div><div><label>Phone *</label><input id="ph" inputmode="tel"></div><div><label>Email</label><input id="em" type="email"></div>
+<div><label>Age</label><input id="ag" type="number" min="10"></div><div><label>Gender</label><select id="ge"><option>Male</option><option>Female</option><option>Other</option></select></div>
+<div><label>Plan</label><select id="pl">${opts(S.plans,p=>p.name+' — '+inr(p.price))}</select></div><div><label>Start date</label><input id="sd" type="date" value="${today()}"></div>
+<div><label>Paid now (₹)</label><input id="pn" type="number" min="0" value="0"></div><div><label>Login password *</label><input id="pw"></div><div><button onclick="reg()">Register</button></div></div><div class="msg" id="e1"></div></div>
+<div class="cd"><h2>All members</h2><input id="q" placeholder="Search name, phone or ID" oninput="rows()" style="margin-bottom:10px"><div class="t"><table><tr><th>ID</th><th>Name</th><th>Phone</th><th>Plan</th><th>Expiry</th><th>Status</th><th>Due</th></tr><tbody id="mr"></tbody></table></div></div>`;rows()}
+function reg(){const n=V('n').trim(),ph=V('ph').trim(),pw=V('pw').trim(),pid=V('pl'),p=plan(pid);
+if(!n||!ph||!pw||!V('sd')){$('#e1').textContent='Name, phone, password and start date are required';return}
+const paid=Math.max(0,+V('pn')||0),id='GM'+String(++S.nid).padStart(3,'0'),sd=V('sd');
+S.members.push({id,name:n,phone:ph,email:V('em').trim(),age:V('ag'),gender:V('ge'),pw,planId:pid,start:sd,expiry:addM(sd,p.months),due:Math.max(0,p.price-paid)});
+if(paid)S.payments.push({id:'t'+(++S.ny),mid:id,amt:paid,method:'Cash',date:sd});
+save();members();$('#e1').innerHTML=`<span class="ok">Registered ${esc(n)} — Member ID <b>${id}</b></span>`}
+function plans(){$('#v').innerHTML=`<div class="cd"><h2>Create plan</h2><div class="f"><div><label>Name</label><input id="pn1" placeholder="e.g. Half-yearly"></div><div><label>Duration (months)</label><input id="pm" type="number" min="1" value="1"></div><div><label>Price (₹)</label><input id="pp" type="number" min="0"></div><div><button onclick="addPlan()">Add plan</button></div></div><div class="msg" id="e2"></div></div>
+<div class="cd"><h2>Plans</h2><div class="t"><table><tr><th>Name</th><th>Duration</th><th>Price</th><th>Members</th></tr>${S.plans.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.months} mo</td><td>${inr(p.price)}</td><td>${S.members.filter(m=>m.planId==p.id).length}</td></tr>`).join('')}</table></div></div>`}
+function addPlan(){const n=V('pn1').trim(),m=+V('pm'),p=+V('pp');if(!n||m<1||!(p>=0)||V('pp')===''){$('#e2').textContent='Enter a name, duration and price';return}
+S.plans.push({id:'p'+(++S.np),name:n,months:m,price:p});save();plans()}
+function pay(){const h=[...S.payments].sort((a,b)=>b.date.localeCompare(a.date)||0);
+$('#v').innerHTML=`<div class="cd"><h2>Record payment</h2><div class="f"><div><label>Member</label><select id="pm1" onchange="pinfo()">${opts(S.members,m=>m.name+' ('+m.id+')',pre)}</select></div>
+<div><label>Amount (₹)</label><input id="pa" type="number" min="1"></div><div><label>Method</label><select id="pt"><option>Cash</option><option>UPI</option><option>Card</option></select></div><div><label>Date</label><input id="pd" type="date" value="${today()}"></div>
+<div><label><input type="checkbox" id="rn" style="width:auto"${pre?' checked':''}> Renew plan (adds plan price to dues, extends expiry)</label></div><div><button onclick="rec()">Save payment</button></div></div><div class="mu" id="pi" style="margin-top:8px"></div><div class="msg" id="e3"></div></div>
+<div class="cd"><h2>Payment history</h2><div class="t"><table><tr><th>Date</th><th>Member</th><th>Amount</th><th>Method</th></tr>${h.map(x=>`<tr><td>${x.date}</td><td>${esc(mem(x.mid)?.name||x.mid)}</td><td>${inr(x.amt)}</td><td>${esc(x.method)}</td></tr>`).join('')||'<tr><td colspan=4 class="mu">No payments</td></tr>'}</table></div></div>`;pinfo()}
+function pinfo(){const m=mem(V('pm1'));if(m)$('#pi').textContent=`Plan: ${plan(m.planId).name} · Expires ${m.expiry} · Pending ${inr(m.due)}`}
+function rec(){const m=mem(V('pm1')),a=+V('pa');if(!m||!(a>0)||!V('pd')){$('#e3').textContent='Select a member and enter a valid amount and date';return}
+const p=plan(m.planId);if($('#rn').checked){m.start=left(m.expiry)>=0?m.expiry:today();m.expiry=addM(m.start,p.months);m.due+=p.price}
+m.due=Math.max(0,m.due-a);S.payments.push({id:'t'+(++S.ny),mid:m.id,amt:a,method:V('pt'),date:V('pd')});save();pre='';pay()}
+render();
+</script></body></html>
